@@ -160,7 +160,7 @@ def backward_conv(x, y, error_y, filters, p=0, s=1):
     # Calculate bias update
     for i in xrange(x.shape[3]):
         # sum delta_y
-        bias_update_result = np.sum(delta_y[:, :, :, i])
+        bias_update_result[i] = np.sum(delta_y[:, :, :, i])
 
     # Return the delta and gradient result
     return (delta_result, gradient_result, bias_update_result)

@@ -9,8 +9,8 @@ import numpy as np
 import mnist
 import cnn
 
-tr_data, tr_label = mnist.load_mnist(path="", selection=slice(0, 2000))
-vl_data, vl_label = mnist.load_mnist(path="", selection=slice(2000, 2500))
+tr_data, tr_label = mnist.load_mnist(path="", selection=slice(0, 500))
+vl_data, vl_label = mnist.load_mnist(path="", selection=slice(1000, 1100))
 
 #%% INIIT FILTER
 
@@ -35,22 +35,23 @@ lsyn2 = 0
 lr = 0.005
 momentum = 0.5
 
-for i in xrange(5000):
-    
+for i in xrange(300):
+
     l1 = cnn.sigmoid(np.dot(l0, syn0) + bias_0)
     l2 = cnn.sigmoid(np.dot(l1, syn1) + bias_1)
     l3_n = np.dot(l2, syn2) + bias_2
-    
+
     exp_scores = np.exp(l3_n)
     l3 = exp_scores / np.sum(exp_scores, axis=1, keepdims=True)
 
     result = np.argmax(l3, axis=1)
-        
+#    print(result)
+
     ld3 = l3
     ld3[range(len(lb)), lb] -= 1
-    ld2 = np.dot(ld3, syn2.T) * cnn.relu(l2, deriv=True)
-    ld1 = np.dot(ld2, syn1.T) * cnn.relu(l1, deriv=True)
-    
+    ld2 = np.dot(ld3, syn2.T) * cnn.sigmoid(l2, deriv=True)
+    ld1 = np.dot(ld2, syn1.T) * cnn.sigmoid(l1, deriv=True)
+
     dsyn2 = l2.T.dot(ld3) + lsyn2 * momentum
     dsyn1 = l1.T.dot(ld2) + lsyn1 * momentum
     dsyn0 = l0.T.dot(ld1) + lsyn0 * momentum
@@ -58,11 +59,11 @@ for i in xrange(5000):
     syn2 -= dsyn2 * lr
     syn1 -= dsyn1 * lr
     syn0 -= dsyn0 * lr
-    
+
     bias_2 -= np.sum(ld3, axis=0) * lr
     bias_1 -= np.sum(ld2, axis=0) * lr
     bias_0 -= np.sum(ld1, axis=0) * lr
-    
+
     lsyn2 = dsyn2
     lsyn1 = dsyn1
     lsyn0 = dsyn0
@@ -72,8 +73,8 @@ for i in xrange(5000):
 cft = np.zeros((10, 10))
 for j in xrange(len(lb)):
     cft[result[j], lb[j]] += 1
-    
-print "EPOCH: %s = %s" % (i, np.sum(np.diag(cft)))
+
+print "Training Data EPOCH: %s = %s" % (i + 1, np.sum(np.diag(cft)))
 
 l0 = vl_data.reshape((vl_data.shape[0], 784))
 lb = vl_label[:, np.newaxis]

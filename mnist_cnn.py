@@ -9,8 +9,8 @@ import numpy as np
 import cnn
 import mnist
 
-tr_data, tr_label = mnist.load_mnist(path="", selection=slice(0, 10), digits=[0,1])
-#vl_data, vl_label = mnist.load_mnist(path="", selection=slice(0, 0))
+tr_data, tr_label = mnist.load_mnist(path="", selection=slice(0, 200), digits=[0,1])
+vl_data, vl_label = mnist.load_mnist(path="", selection=slice(200, 250), digits=[0,1])
 
 #%% INIIT FILTER
 
@@ -41,10 +41,10 @@ lg1 = 0
 
 #%% RUN EPOCH
 
-lr = 0.01
-momentum = 0.25
+lr = 0.005
+momentum = 0.5
 
-for i in xrange(1000):
+for i in xrange(50):
 
     l1 = cnn.forward_conv(l0, filter_1, bias_1)
     l2, l2_switches = cnn.forward_pool(l1, 2, 2)
@@ -61,8 +61,8 @@ for i in xrange(1000):
 
     e = l8 - lb
     
-    print "%s" % (i,)
-    print "%s -> %s" % (l8_na, l8)
+#    print "%s" % (i,)
+#    print "%s -> %s" % (l8_na, l8)
 
     ld8 = e * cnn.sigmoid(l8, deriv=True)
     ld7 = np.dot(ld8, syn8.T) * cnn.relu(l7, deriv=True)
@@ -117,3 +117,9 @@ print l6.shape
 print l7.shape
 print l8.shape
 print "-"
+
+cf = np.zeros((2, 2))
+for i in xrange(lb.shape[0]):
+    cf[int(round(lb[i])), int(round(l8[i]))] += 1
+
+print "Accuracy Training: %f" % ((cf[0,0] + cf[1,1]) / float(lb.shape[0]))
