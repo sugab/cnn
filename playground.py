@@ -21,7 +21,7 @@ for i in xrange(450):
     l2_out = l2.forward(l1_out)
     l3_out = l3.forward(l2_out)
 
-    probs = bc.SoftmaxLayer.forward(l3_out)
+    probs, loss = bc.SoftmaxLayer.forward(l3_out, tr_label)
     result = np.argmax(probs, axis=1)
 
     error3 = bc.SoftmaxLayer.backward(probs, tr_label)
@@ -45,7 +45,7 @@ l1_out = l1.forward(l0)
 l2_out = l2.forward(l1_out)
 l3_out = l3.forward(l2_out)
 
-probs = bc.SoftmaxLayer.forward(l3_out)
+probs, loss = bc.SoftmaxLayer.forward(l3_out, vl_label)
 result = np.argmax(probs, axis=1)
 
 cfv = np.zeros((10, 10))

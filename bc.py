@@ -80,11 +80,16 @@ class SigmoidLayer:
 class SoftmaxLayer:
 
     @staticmethod
-    def forward(data):
-        exp_scores = np.exp(data)
-        return exp_scores / np.sum(exp_scores, axis=1, keepdims=True)
+    def forward(scores, target):
+        exp_scores = np.exp(scores)
+        probs = exp_scores / np.sum(exp_scores, axis=1, keepdims=True)
+        
+        corect_logprobs = -np.log(probs[range(len(target)), target])
+        data_loss = np.sum(corect_logprobs)        
+        
+        return probs, data_loss
 
     @staticmethod
-    def backward(data, label):
-        data[range(len(label)), label] -= 1
-        return data
+    def backward(scores, target):
+        scores[range(len(target)), target] -= 1
+        return scores
