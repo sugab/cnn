@@ -111,7 +111,6 @@ for i in xrange(35):
     lg1 = g1
 
 #%% Print dimension of each layer
-
 print l0.shape
 print l1.shape
 print l2.shape

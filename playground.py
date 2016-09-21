@@ -11,8 +11,8 @@ l0 = tr_data.reshape((tr_data.shape[0], 784))
 np.random.seed(1)
 bc.Layer.learning_rate = 0.01
 
-l1 = bc.FCLayer((784, 196), activation=bc.SigmoidLayer, auto_update=True)
-l2 = bc.FCLayer((196, 49), activation=bc.SigmoidLayer, auto_update=True)
+l1 = bc.FCLayer((784, 196), activation=bc.SigmoidLayer(), auto_update=True)
+l2 = bc.FCLayer((196, 49), activation=bc.SigmoidLayer(), auto_update=True)
 l3 = bc.FCLayer((49, 10), auto_update=True)
 
 #%% Training

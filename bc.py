@@ -8,6 +8,7 @@ Created on Mon Sep  5 14:57:43 2016
 # Importing depedency lib
 import numpy as np
 
+#%% BASE LAYER
 # Base class for all layer
 class Layer:
 
@@ -38,7 +39,7 @@ class FCLayer(Layer):
             self.out_data = net
         else:
             self.out_data = self.activation.forward(net)
-            
+
         return self.out_data
 
     def backward(self, error):
@@ -65,31 +66,78 @@ class FCLayer(Layer):
         self.weight -= self.delta_w * Layer.learning_rate
         self.bias -= np.sum(self.delta, axis=0) * Layer.learning_rate
 
+#%% ACTIVATION LAYER
+# Class implementation for ReLU layer
+class ReLULayer:
+    def forward(data):
+        return np.maximum(0, data)
+
+    def backward(data):
+        return (data > 0) * 1
+
+# Class implementation for ELU layer
+class ELULayer:
+    def forward(data, alpha=0.1):
+        return np.maximum(alpha * np.exp(data) - 1, data)
+
+    def backward(data, alpha=0.1):
+        return np.where(data > 0, 1, data + alpha)
+
 # Class implementation for sigmoid layer
 class SigmoidLayer:
-
-    @staticmethod
     def forward(data):
-        return 1/(1+np.exp(-data))
+        return 1 / (1 + np.exp(-data))
 
-    @staticmethod
     def backward(data):
-        return data*(1-data)
+        return data * (1 - data)
+
+# Class implementation for Tanh layer
+class TanhLayer:
+    def forward(data):
+        return 2 / (1 + np.exp(-2 * data)) - 1
+
+    def backward(data):
+        return 1 - (data ** 2)
 
 # Class implementation for Softmax layer
 class SoftmaxLayer:
-
-    @staticmethod
     def forward(scores, target):
         exp_scores = np.exp(scores)
         probs = exp_scores / np.sum(exp_scores, axis=1, keepdims=True)
-        
+
         corect_logprobs = -np.log(probs[range(len(target)), target])
-        data_loss = np.sum(corect_logprobs)        
-        
+        data_loss = np.sum(corect_logprobs)
+
         return probs, data_loss
 
-    @staticmethod
     def backward(scores, target):
         scores[range(len(target)), target] -= 1
         return scores
+
+#%% OPTIMIZATION
+def vanilla(w, dw, lr=1):
+    return w -= lr * dw
+
+def momentum(w, dw, ldw, lr=1, m=0):
+    nw = w - dw * lr + ldw * m
+    return nw, dw
+
+def rmsProp(w, dx, lr, lgt=0, dr, eps):
+    gt = dr * lgt + (1 - dr) * dx**2
+    nw = w - lr * dx / (np.sqrt(gt) + eps)
+    return nw, gt
+
+def adam(w, dx, lr, b1, b2, lm=0, lv=0, eps):
+    m = b1 * lm + (1 - b1) * dx
+    v = b2 * lv + (1 - b2) * (dx ** 2)
+
+    nw = w - lr * m / (np.sqrt(v) + eps)
+    return nw, m, v
+
+#%% REGULARIZATION
+def dropout(x, probs, isTesting=False):
+    if isTesting:
+        return x * probs
+
+    dp = np.random.random(x.shape) - probs
+    return (dp < 0) * x
