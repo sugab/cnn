@@ -21,10 +21,10 @@ for i in xrange(450):
     l2_out = l2.forward(l1_out)
     l3_out = l3.forward(l2_out)
 
-    probs, loss = bc.SoftmaxLayer.forward(l3_out, tr_label)
+    probs, loss = bc.SoftmaxLayer().forward(l3_out, tr_label)
     result = np.argmax(probs, axis=1)
 
-    error3 = bc.SoftmaxLayer.backward(probs, tr_label)
+    error3 = bc.SoftmaxLayer().backward(probs, tr_label)
     error2, _ = l3.backward(error3)
     error1, _ = l2.backward(error2)
     l1.backward(error1)
