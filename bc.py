@@ -114,6 +114,46 @@ class SoftmaxLayer:
         scores[range(len(target)), target] -= 1
         return scores
 
+#%% NORMALIZATION
+class BatchNorm:
+    def forward(x, gm, bt, eps):
+        N = x.shape[0]
+
+        mu = 1. / N * np.sum(x, axis=0)
+        xmu = x - mu
+
+        sq = xmu ** 2
+        var = 1. / N * np.sum(sq, axis=0)
+        std = np.sqrt(var + eps)
+        ivar = 1. / std
+        xhat = xmu * ivar
+
+        gmx = gm * xhat
+        out = gammax + bt
+
+        return out, xhat, xmu, ivar, std, var, eps
+
+    def backward(dout, gm, xhat, xmu, ivar, std, var, eps):
+        N = dout.shape[0]
+
+        dbeta = np.sum(dout, axis=0)
+
+        dgamma = np.sum(dout * xhat, axis=0)
+
+        dxhat = dgammax * gm
+        divar = np.sum(dxhat * xmu, axis=0)
+        dxmu1 = dxhat * ivar
+        dsqrtvar = -1. / (std ** 2) * divar
+        dvar = 0.5 * 1. / np.sqrt(var + eps) * dsqrtvar
+        dsq = 1. / N * np.ones((N,D)) * dvar
+        dxmu2 = 2 * xmu * dsq
+        dx1 = (dxmu1 + dxmu2)
+        dmu = -1 * np.sum(dxmu1 + dxmu2, axis=0)
+        dx2 = 1. / N * np.ones(dout.shape) * dmu
+        dx = dx1 + dx2
+
+        return dx, dgamma, dbeta
+
 #%% OPTIMIZATION
 def vanilla(w, dw, lr=1):
     return w -= lr * dw
@@ -127,9 +167,9 @@ def rmsProp(w, dx, lr, lgt=0, dr, eps):
     nw = w - lr * dx / (np.sqrt(gt) + eps)
     return nw, gt
 
-def adam(w, dx, lr, b1, b2, lm=0, lv=0, eps):
-    m = b1 * lm + (1 - b1) * dx
-    v = b2 * lv + (1 - b2) * (dx ** 2)
+def adam(w, dx, lr, bt1, bt2, lm=0, lv=0, eps):
+    m = bt1 * lm + (1 - b1) * dx
+    v = bt2 * lv + (1 - b2) * (dx ** 2)
 
     nw = w - lr * m / (np.sqrt(v) + eps)
     return nw, m, v
