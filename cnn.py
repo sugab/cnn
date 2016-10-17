@@ -6,12 +6,18 @@ from scipy import signal as sg
 
 # MARK - FUNCTION DEFINITION
 # Sigmoid
-def sigmoid(x,deriv=False):
+def sigmoid(x, deriv=False):
     # if the deriv==True then calculate the derivative instead
-    if(deriv==True):
+    if(deriv):
         return x*(1-x)
 
     return 1/(1+np.exp(-x))
+
+def tanh(x, deriv=False):
+    if (deriv):
+        return 1 - (x ** 2)
+
+    return 2 / (1 + np.exp(-2 * x)) - 1
 
 # Rectified Linear Unit
 # Calculate relu of given x
@@ -21,6 +27,12 @@ def relu(x, deriv=False):
         return (x > 0) * 1
 
     return np.maximum(0, x)
+
+def elu(x, a=0.1, deriv=False):
+    if (deriv):
+        return np.where(x >= 0, 1, x + a)
+
+    return np.where(x >= 0, x, a * (np.exp(x) - 1))
 
 # Zero Pad
 # Adding zero padding to 4D matrix
@@ -45,14 +57,14 @@ def size_after_backward(x, f, p=0, s=1):
 
 # Max Pooling
 # Calculate Max Pooling of given x=input (3D Matrix) with given f=filter size and s=stride
-def max_pooling(x, f, s=2):
+def max_pooling(x, h, w):
     # Input matrix x must 3D
     assert x.ndim == 3, 'Input not 3D matrix'
 
     # Calculate result dimension
     depth = x.shape[2]
-    height = size_after_forward(x.shape[0], f, s=s)
-    width = size_after_forward(x.shape[1], f, s=s)
+    height = size_after_forward(x.shape[0], h, s=h)
+    width = size_after_forward(x.shape[1], w, s=w)
     # Initialize result & switch with zero value
     result = np.zeros((height, width, depth))
     switch = np.zeros((height, width, depth))
@@ -64,23 +76,23 @@ def max_pooling(x, f, s=2):
             # Loop through width of the input
             for k in xrange(width):
                 # Calculate max value from filter area of the input
-                result[j, k, i] = np.max(x[j*s:j*s+f, k*s:k*s+f, i])
+                result[j, k, i] = np.max(x[j*h:j*h+h, k*w:k*w+w, i])
                 # Keep track of max index
-                switch[j, k, i] = np.argmax(x[j*s:j*s+f, k*s:k*s+f, i])
+                switch[j, k, i] = np.argmax(x[j*h:j*h+h, k*w:k*w+w, i])
 
     # Return result and switch value
     return (result, switch)
 
 # Max Pooling
 # Calculate Max Pooling of given x=input (3D Matrix) with given f=filter size and s=stride
-def unmax_pooling(x, switch, f, s=2):
+def unmax_pooling(x, switch, h, w):
     # Input matrix x must 3D
     assert x.ndim == 3, 'Input not 3D matrix'
 
     # Calculate result dimension
     depth = x.shape[2]
-    height = size_after_backward(x.shape[0], f, s=s)
-    width = size_after_backward(x.shape[1], f, s=s)
+    height = size_after_backward(x.shape[0], h, s=h)
+    width = size_after_backward(x.shape[1], w, s=w)
     # Initialize result with zero value
     result = np.zeros((height, width, depth))
 
@@ -91,8 +103,8 @@ def unmax_pooling(x, switch, f, s=2):
             # Loop through width of the input
             for k in xrange(x.shape[1]):
                 # Calculate max value from filter area of the input
-                r_index = (j * s) + (switch[j, k, i] / f)
-                c_index = (k * s) + (switch[j, k, i] % f)
+                r_index = int((j * h) + (switch[j, k, i] / w))
+                c_index = int((k * w) + (switch[j, k, i] % w))
 
                 result[r_index, c_index, i] = x[j, k, i]
 
@@ -128,6 +140,9 @@ def backward_conv(x, y, error_y, filters, p=0, s=1):
     # Backprop through relu layer first
     delta_y = relu(y, deriv=True) * error_y
 
+    # Adding zero padding if p != 0
+    if (p > 0): x = zero_pad(x, p)
+
     # Initialize result variable
     delta_result = np.zeros(x.shape)
     gradient_result = np.zeros(filters.shape)
@@ -145,7 +160,7 @@ def backward_conv(x, y, error_y, filters, p=0, s=1):
             # Full convolve the delta layer with its corresponded filter
             r = sg.convolve(s, f, 'full')
             # Ignore pad if there is a padding in forward conv
-            delta_result[i] += r if p <= 0 else r[p:-p, p:-p, :]
+            delta_result[i] += r
 
     # Loop through each image input
     # image count == delta count
@@ -158,9 +173,12 @@ def backward_conv(x, y, error_y, filters, p=0, s=1):
             gradient_result[j] += sg.convolve(x[i], f, 'valid')
 
     # Calculate bias update
-    for i in xrange(x.shape[3]):
+    for i in xrange(filters.shape[0]):
         # sum delta_y
         bias_update_result[i] = np.sum(delta_y[:, :, :, i])
+
+    # Trim delta result if padded
+    if (p > 0): delta_result = delta_result[:, p:-p, p:-p, :]
 
     # Return the delta and gradient result
     return (delta_result, gradient_result, bias_update_result)
@@ -168,29 +186,52 @@ def backward_conv(x, y, error_y, filters, p=0, s=1):
 
 # Forward Pooling
 # Calculate feed forward pooling layer
-def forward_pool(x, filter_size, stride):
+def forward_pool(x, h, w):
     # Initialize result dimension after pooling
-    result = np.zeros((x.shape[0], size_after_forward(x.shape[1], filter_size, s=stride), size_after_forward(x.shape[2], filter_size, s=stride), x.shape[3]))
+    result = np.zeros((x.shape[0], size_after_forward(x.shape[1], h, s=h), size_after_forward(x.shape[2], w, s=w), x.shape[3]))
     switch = np.zeros(result.shape)
 
     # loop through all input and do max pooling
     for i in xrange(x.shape[0]):
         # Do max pooling
-        result[i], switch[i] = max_pooling(x[i], filter_size, stride)
+        result[i], switch[i] = max_pooling(x[i], h, w)
 
     # return the result
     return (result, switch)
 
 # Backward Pooling
 # Calculate backward pooling layer
-def backward_pool(x, switch, filter_size, stride):
+def backward_pool(x, switch, h, w):
     # Initialize result dimension after backward pool
-    result = np.zeros((x.shape[0], size_after_backward(x.shape[1], filter_size, s=stride), size_after_backward(x.shape[2], filter_size, s=stride), x.shape[3]))
+    result = np.zeros((x.shape[0], size_after_backward(x.shape[1], h, s=h), size_after_backward(x.shape[2], w, s=w), x.shape[3]))
 
     # loop through all input and do unmax pooling
     for i in xrange(x.shape[0]):
         # Do unmax pooling
-        result[i] = unmax_pooling(x[i], switch[i], filter_size, stride)
+        result[i] = unmax_pooling(x[i], switch[i], h, w)
 
     # return the result
     return result
+
+# Forward Softmax
+# Calculate forward Softmax Layer
+def forward_softmax(x, target):
+    exp_scores = np.exp(x)
+    probs = exp_scores / np.sum(exp_scores, axis=1, keepdims=True)
+
+    # Calculate data loss
+    corect_logprobs = -np.log(probs[range(len(target)), target])
+    data_loss = np.sum(corect_logprobs)
+    data_loss *= 1. / len(target)
+
+    # Return the probability and data loss
+    return probs, data_loss
+
+# Backward Softmax
+# Calculate backward Softmax Layer
+def backward_softmax(x, target):
+    d = x
+    d[range(len(target)), target] -= 1
+
+    # Return the scores after backward
+    return d

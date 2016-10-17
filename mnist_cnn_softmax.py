@@ -9,6 +9,10 @@ import numpy as np
 import cnn
 import mnist
 
+#%% Helper
+def crandom(size):
+    return np.random.normal(0, 0.1, size)
+
 tr_data, tr_label = mnist.load_mnist(path="", selection=slice(0, 20), digits=[0,1])
 vl_data, vl_label = mnist.load_mnist(path="", selection=slice(20, 420), digits=[0,1])
 
@@ -19,17 +23,17 @@ np.random.seed(1)
 l0 = tr_data[:, :, :, np.newaxis]
 lb = tr_label
 
-filter_1 = np.random.normal(0, 0.1, (10, 5, 5, 1))
+filter_1 = crandom((10, 5, 5, 1))
 bias_1 = np.ones((10))
-filter_3 = np.random.normal(0, 0.1, (10, 3, 3, 10))
+filter_3 = crandom((10, 3, 3, 10))
 bias_3 = np.ones((10))
-filter_4 = np.random.normal(0, 0.1, (10, 3, 3, 10))
+filter_4 = crandom((10, 3, 3, 10))
 bias_4 = np.ones((10))
-filter_6 = np.random.normal(0, 0.1, (10, 3, 3, 10))
+filter_6 = crandom((10, 3, 3, 10))
 bias_6 = np.ones((10))
-syn7 = np.random.normal(0, 0.1, (40, 20))
+syn7 = crandom((40, 20))
 bias_7 = np.ones((1, 20))
-syn8 = np.random.normal(0, 0.1, (20, 2))
+syn8 = crandom((20, 2))
 bias_8 = np.ones((1, 2))
 
 lsyn8 = 0
