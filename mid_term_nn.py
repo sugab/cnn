@@ -23,11 +23,12 @@ ldsyn2 = 0
 lr = 0.000001
 m = 0.9
 mb_size = 100
+dp = 0.5
 
-tr_result = np.zeros((50, 100))
-vl_result = np.zeros((50, 2))
+tr_result = np.zeros((100, 100))
+vl_result = np.zeros((100, 2))
 
-for i in xrange(50):
+for i in xrange(100):
 
     for  j in xrange(len(train_data) / mb_size):
 
@@ -35,6 +36,8 @@ for i in xrange(50):
         label = train_label[(j*mb_size):((j+1)*mb_size)]
 
         l1 = cnn.relu(np.dot(l0, syn1) + b1)
+        l1 *= np.random.binomial([np.ones((len(l0), len(syn2)))], 1 - dp)[0] * (1.0 / (1 - dp))
+
         l2_sum = np.dot(l1, syn2) + b2
 
         l2, loss = cnn.forward_softmax(l2_sum, label)

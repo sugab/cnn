@@ -25,6 +25,7 @@ ldsyn3 = 0
 lr = 0.0001
 m = 0.9
 mb_size = 10
+dp = 0.5
 
 tr_result = np.zeros((50, 100))
 vl_result = np.zeros((50, 2))
@@ -40,6 +41,7 @@ for i in xrange(25):
         l2, l2_sw = cnn.forward_pool(l1, 2, 2)
 
         l3_in = l2.reshape((l2.shape[0], l2.shape[1] * l2.shape[2] * l2.shape[3]))
+        l3_in *= np.random.binomial([np.ones((len(l0), len(syn3)))], 1 - dp)[0] * (1.0 / (1 - dp))
 
         l3_sum = np.dot(l3_in, syn3) + b3
         l3, loss = cnn.forward_softmax(l3_sum, label)
