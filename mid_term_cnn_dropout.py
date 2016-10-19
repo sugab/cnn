@@ -27,7 +27,7 @@ m = 0.9
 mb_size = 10
 dp = 0.5
 
-tr_result = np.zeros((50, 100))
+tr_result = np.zeros((50, 1000))
 vl_result = np.zeros((50, 2))
 
 for i in xrange(25):
@@ -78,5 +78,5 @@ for i in xrange(25):
     vl_result[i, 0] = loss
     vl_result[i, 1] = acc
 
-np.save('tr_result_cnn.npy', tr_result)
-np.save('vl_result_cnn.npy', vl_result)
+np.save('tr_result_cnn_dr.npy', tr_result)
+np.save('vl_result_cnn_dr.npy', vl_result)

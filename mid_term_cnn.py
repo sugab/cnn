@@ -26,7 +26,7 @@ lr = 0.0001
 m = 0.9
 mb_size = 10
 
-tr_result = np.zeros((50, 100))
+tr_result = np.zeros((50, 1000))
 vl_result = np.zeros((50, 2))
 
 for i in xrange(25):
