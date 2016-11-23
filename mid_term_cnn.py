@@ -3,14 +3,14 @@ import cnn
 import cifar
 
 train_batch = cifar.unpickle('cifar-10-batches-py/data_batch_1')
-train_data = train_batch['data']
+train_data = train_batch['data'][0:100]
 train_data = train_data.reshape((len(train_data), 32, 32, 3), order='F')
-train_label = train_batch['labels']
+train_label = train_batch['labels'][0:100]
 
 validation_batch = cifar.unpickle('cifar-10-batches-py/data_batch_2')
-validation_data = validation_batch['data']
+validation_data = validation_batch['data'][0:100]
 validation_data = validation_data.reshape((len(train_data), 32, 32, 3), order='F')
-validation_label = validation_batch['labels']
+validation_label = validation_batch['labels'][0:100]
 
 np.random.seed(1)
 
@@ -22,14 +22,15 @@ b3 = np.ones(10)
 ldf1 = 0
 ldsyn3 = 0
 
-lr = 0.0001
+lr = 0.00001
 m = 0.9
 mb_size = 10
+dp = 0.5
 
-tr_result = np.zeros((50, 1000))
+tr_result = np.zeros((50, 10))
 vl_result = np.zeros((50, 2))
 
-for i in xrange(25):
+for i in xrange(50):
 
     for  j in xrange(len(train_data) / mb_size):
 
@@ -40,6 +41,7 @@ for i in xrange(25):
         l2, l2_sw = cnn.forward_pool(l1, 2, 2)
 
         l3_in = l2.reshape((l2.shape[0], l2.shape[1] * l2.shape[2] * l2.shape[3]))
+        # l3_in *= np.random.binomial([np.ones((len(l0), len(syn3)))], 1 - dp)[0] * (1.0 / (1 - dp))
 
         l3_sum = np.dot(l3_in, syn3) + b3
         l3, loss = cnn.forward_softmax(l3_sum, label)
@@ -76,5 +78,5 @@ for i in xrange(25):
     vl_result[i, 0] = loss
     vl_result[i, 1] = acc
 
-np.save('tr_result_cnn.npy', tr_result)
-np.save('vl_result_cnn.npy', vl_result)
+np.save('tr_result_cnn_dr.npy', tr_result)
+np.save('vl_result_cnn_dr.npy', vl_result)
