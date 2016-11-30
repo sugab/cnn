@@ -27,10 +27,10 @@ def load_data():
 
     # Combine PCO and non-PCO into one data for training and validation
     tr = np.vstack((trn, trp))
-    tr = tr[:, np.newaxis, :, :]
+    tr = tr[:, :, :, np.newaxis]
     tr_label = np.hstack((np.zeros(len(trn), dtype=np.int), np.ones(len(trp), dtype=np.int)))
     vl = np.vstack((vln, vlp))
-    vl = vl[:, np.newaxis, :, :]
+    vl = vl[:, :, :, np.newaxis]
     vl_label = np.hstack((np.zeros(len(vln), dtype=np.int), np.ones(len(vlp), dtype=np.int)))
 
     # Generate permitation to shuffle all labels and data for training only
