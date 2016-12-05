@@ -24,7 +24,7 @@ vl_data = vl_data[:, np.newaxis, :, :]
 
 data = [tr_data, tr_label, vl_data, vl_label]
 
-network = c.CNN(model, c.SoftmaxLayer, data, lr=0.0001, momentum=0.9, dropout=0.8)
+network = c.CNN(model, c.SoftmaxLayer, data, lr=0.00005, momentum=0.9, dropout=0.8)
 t, v = network.run(500, 25)
 
 np.save('tubes_elu_1_t', t)
