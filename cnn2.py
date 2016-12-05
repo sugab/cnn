@@ -277,8 +277,8 @@ class ConvolutionLayer:
         h_out = (h_x - h_filter + 2 * self.p) / self.s + 1
         w_out = (w_x - w_filter + 2 * self.p) / self.s + 1
 
-        if not isinstance(h_out, int) or not isinstance(w_out, int):
-            raise Exception('Invalid output dimension!')
+        # if not isinstance(h_out, int) or not isinstance(w_out, int):
+        #     raise Exception('Invalid output dimension!')
 
         h_out, w_out = int(h_out), int(w_out)
 
