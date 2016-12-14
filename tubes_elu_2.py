@@ -14,7 +14,7 @@ l6 = c.PoolingLayer(2, 2)
 l7 = c.FCLayer(h.random((288, 64)), np.ones(64), activation=c.ELULayer)
 l8 = c.FCLayer(h.random((64, 10)), np.ones(10))
 
-model = [l1, l2, l3, l4, l5, l6]
+model = [l1, l2, l3, l4, l5, l6, l7, l8]
 
 tr_data, tr_label = mnist.load_mnist(path="", selection=slice(0, 1000))
 vl_data, vl_label = mnist.load_mnist(path="", selection=slice(1000, 1100))

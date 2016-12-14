@@ -3,7 +3,6 @@
 # Importing Libs
 import numpy as np
 from scipy import signal as sg
-from im2col import *
 
 #%% CONFIG CLASS
 # class implementation for saving configuration
@@ -47,7 +46,7 @@ class CNN:
         # run each epoch
         for i in xrange(epoch):
             # un each batch
-            for j in xrange(len(self.x) / batch_size):
+            for j in xrange(len(self.x)):
                 # Get single data
                 # Get data based on batch size
                 x_batch = self.x[batch_size*j:batch_size*(j+1)]
@@ -71,7 +70,7 @@ class CNN:
 
                 # print loss if debug is true
                 if debug:
-                    print i, loss
+                    print "EPOCH %s LOSS = %s" % (i, loss)
 
                 # Calculate error with given scoring class
                 d = self.scoring.backward(score, label)
@@ -98,6 +97,7 @@ class CNN:
 
                 # Print the result
                 print "EPOCH %s" % i
+                print "V_RESULT = %s" % score
                 print "V_LOSS = %s" % loss
                 print "V_ACCURACY = %s" % acc
 
@@ -140,12 +140,12 @@ def max_pooling(x, h, w):
     assert x.ndim == 3, 'Input not 3D matrix'
 
     # Calculate result dimension
-    depth = x.shape[0]
-    height = size_after_forward(x.shape[1], h, s=h)
-    width = size_after_forward(x.shape[2], w, s=w)
+    depth = x.shape[2]
+    height = size_after_forward(x.shape[0], h, s=h)
+    width = size_after_forward(x.shape[1], w, s=w)
     # Initialize result & switch with zero value
-    result = np.zeros((depth, height, width))
-    switch = np.zeros((depth, height, width))
+    result = np.zeros((height, width, depth))
+    switch = np.zeros((height, width, depth))
 
     # Loop through depth of the input
     for i in xrange(depth):
@@ -154,9 +154,9 @@ def max_pooling(x, h, w):
             # Loop through width of the input
             for k in xrange(width):
                 # Calculate max value from filter area of the input
-                result[i, j, k] = np.max(x[i, j*h:j*h+h, k*w:k*w+w])
+                result[j, k, i] = np.max(x[j*h:j*h+h, k*w:k*w+w, i])
                 # Keep track of max index
-                switch[i, j, k] = np.argmax(x[i, j*h:j*h+h, k*w:k*w+w])
+                switch[j, k, i] = np.argmax(x[j*h:j*h+h, k*w:k*w+w, i])
 
     # Return result and switch value
     return (result, switch)
@@ -168,23 +168,23 @@ def unmax_pooling(x, switch, h, w):
     assert x.ndim == 3, 'Input not 3D matrix'
 
     # Calculate result dimension
-    depth = x.shape[0]
-    height = size_after_backward(x.shape[1], h, s=h)
-    width = size_after_backward(x.shape[2], w, s=w)
+    depth = x.shape[2]
+    height = size_after_backward(x.shape[0], h, s=h)
+    width = size_after_backward(x.shape[1], w, s=w)
     # Initialize result with zero value
-    result = np.zeros((depth, height, width))
+    result = np.zeros((height, width, depth))
 
     # Loop through depth of the input
-    for i in xrange(x.shape[0]):
+    for i in xrange(x.shape[2]):
         # Loop through height of the input
-        for j in xrange(x.shape[1]):
+        for j in xrange(x.shape[0]):
             # Loop through width of the input
-            for k in xrange(x.shape[2]):
+            for k in xrange(x.shape[1]):
                 # Calculate max value from filter area of the input
-                r_index = int((j * h) + (switch[i, j, k] / w))
-                c_index = int((k * w) + (switch[i, j, k] % w))
+                r_index = int((j * h) + (switch[j, k, i] / w))
+                c_index = int((k * w) + (switch[j, k, i] % w))
 
-                result[i, r_index, c_index] = x[i, j, k]
+                result[r_index, c_index, i] = x[j, k, i]
 
     # Return result and switch value
     return result
@@ -257,70 +257,101 @@ class ConvolutionLayer:
     # w for initial weight
     # b for initial bias
     # p for padding default = 0 (No Padding)
-    def __init__(self, W, b, p=0, s=1, activation=None):
-        self.W = W
+    def __init__(self, w, b, p=0, activation=None):
+        self.w = w
         self.b = b
         self.p = p
-        self.s = s
         self.activation = activation
         # Initialize last dw = 0 for momentum
-        self.ldW = 0
+        self.ldw = 0
 
     # Forward Convolution
     # Calculate feed forward convolution layer for given x=input, filters, and p=padding
-    def forward(self, X):
-        stride = 1
-        self.X = X
+    def forward(self, x):
+        # Input matrix x must 4D
+        assert x.ndim == 4, 'Input not 4D matrix'
 
-        n_filters, d_filter, h_filter, w_filter = self.W.shape
-        n_x, d_x, h_x, w_x = self.X.shape
-        h_out = (h_x - h_filter + 2 * self.p) / self.s + 1
-        w_out = (w_x - w_filter + 2 * self.p) / self.s + 1
+        self.x = x
 
-        # if not isinstance(h_out, int) or not isinstance(w_out, int):
-        #     raise Exception('Invalid output dimension!')
+        # Initialize result value with size according to x and filters
+        self.y = np.zeros((self.x.shape[0], size_after_forward(self.x.shape[1], self.w.shape[1], self.p), size_after_forward(self.x.shape[2], self.w.shape[2], self.p), self.w.shape[0]))
 
-        h_out, w_out = int(h_out), int(w_out)
+        # Adding zero padding if p != 0
+        if (self.p > 0): self.x = zero_pad(self.x, self.p)
 
-        self.X_col = im2col_indices(self.X, h_filter, w_filter, padding=self.p, stride=self.s)
-        W_col = self.W.reshape(n_filters, -1)
-
-        self.out = W_col.dot(self.X_col) + self.b
-        self.out = self.out.reshape(n_filters, h_out, w_out, n_x)
-        self.out = self.out.transpose(3, 0, 1, 2)
+        # Convolve each input with each filter
+        # Looping through each input
+        for i in xrange(self.x.shape[0]):
+            # Looping through each filters
+            for j in xrange(self.w.shape[0]):
+                # Do convolve computation
+                # 'valid' means that there is no zero padding
+                # Convolve computation resulting 3D matrix so convert it to 2D matrix
+                self.y[i, :, :, j] = (sg.convolve(self.x[i], self.w[j], 'valid')).reshape((self.y.shape[1], self.y.shape[2])) + self.b[j]
 
         # Call ReLU function (Activation function) for each value
         # Return the ReLU result
-        return self.activation.forward(self.out)
+        return self.activation.forward(self.y)
 
     # Backward Convolution
     # Calculate gradient and delta from given parameters
-    def backward(self, dout):
-        n_filter, d_filter, h_filter, w_filter = self.W.shape
+    def backward(self, e):
 
-        dout *= self.activation.backward(self.out)
+        # Check if e is still 2D matrix
+        if e.ndim == 2:
+            # if true then reshape to 4D array
+            e = unflaten(e, self.y.shape)
 
-        db = np.sum(dout, axis=(0, 2, 3))
-        db = db.reshape(n_filter, -1)
+        # Backprop through relu layer first
+        self.dy = self.activation.backward(self.y) * e
 
-        dout_reshaped = dout.transpose(1, 2, 3, 0).reshape(n_filter, -1)
-        dW = dout_reshaped.dot(self.X_col.T)
-        dW = dW.reshape(self.W.shape)
+        # Initialize result variable
+        self.delta = np.zeros(self.x.shape)
+        self.dw = np.zeros(self.w.shape)
+        self.db = np.zeros((self.dy.shape[3]))
 
-        W_reshape = self.W.reshape(n_filter, -1)
-        dX_col = W_reshape.T.dot(dout_reshaped)
-        dX = col2im_indices(dX_col, self.X.shape, h_filter, w_filter, padding=self.p, stride=self.s)
+        # Loop through each delta_y
+        for i in xrange(self.dy.shape[0]):
+            # Loop through each filters
+            # Filters count == dconv
+            for j in xrange(self.w.shape[0]):
+                # Get single layer(2D) from delta input
+                s = self.dy[i, :, :, j].reshape((self.dy.shape[1], self.dy.shape[2], 1))
+                # Flip the filters along its axis
+                f = np.fliplr(np.flipud(self.w[j]))
+                # Full convolve the delta layer with its corresponded filter
+                r = sg.convolve(s, f, 'full')
+                # Ignore pad if there is a padding in forward conv
+                self.delta[i] += r
+
+        # Loop through each image input
+        # image count == delta count
+        for i in xrange(self.x.shape[0]):
+            # Loop through each delta depth
+            for j in xrange(self.dy.shape[3]):
+                # Get single layer(2D) from delta input
+                f = self.dy[i, :, :, j].reshape((self.dy.shape[1], self.dy.shape[2], 1))
+                # Convolve image input with its corresponded delta from next layer
+                self.dw[j] += sg.convolve(self.x[i], f, 'valid')
+
+        # Calculate bias update
+        for i in xrange(self.w.shape[0]):
+            # sum delta_y
+            self.db[i] = np.sum(self.dy[:, :, :, i])
+
+        # Trim delta result if padded
+        if (self.p > 0): self.delta = self.delta[:, self.p:-self.p, self.p:-self.p, :]
 
         # Adding momentum to gradient
-        dW = dW * CONFIG.lr + self.ldW * CONFIG.momentum
+        self.dw = self.dw * CONFIG.lr + self.ldw * CONFIG.momentum
         # Updating gradient
-        self.W -= dW
-        self.b -= db * CONFIG.lr
+        self.w -= self.dw
+        self.b -= self.db * CONFIG.lr
         # saving last dw for later
-        self.ldW = dW
+        self.ldw = self.dw
 
         # Return the delta result
-        return dX
+        return self.delta
 
 # Class implementaion for PoolingLayer
 class PoolingLayer:
@@ -336,7 +367,7 @@ class PoolingLayer:
     # Calculate feed forward pooling layer
     def forward(self, x):
         # Initialize result dimension after pooling
-        self.y = np.zeros((x.shape[0], x.shape[1], size_after_forward(x.shape[2], self.h, s=self.h), size_after_forward(x.shape[3], self.w, s=self.w)))
+        self.y = np.zeros((x.shape[0], size_after_forward(x.shape[1], self.h, s=self.h), size_after_forward(x.shape[2], self.w, s=self.w), x.shape[3]))
         self.sw = np.zeros(self.y.shape)
 
         # loop through all input and do max pooling
@@ -356,7 +387,7 @@ class PoolingLayer:
             e = unflaten(e, self.y.shape)
 
         # Initialize result dimension after backward pool
-        y = np.zeros((e.shape[0], e.shape[1], size_after_backward(e.shape[2], self.h, s=self.h), size_after_backward(e.shape[3], self.w, s=self.w)))
+        y = np.zeros((e.shape[0], size_after_backward(e.shape[1], self.h, s=self.h), size_after_backward(e.shape[2], self.w, s=self.w), e.shape[3]))
 
         # loop through all input and do unmax pooling
         for i in xrange(e.shape[0]):
